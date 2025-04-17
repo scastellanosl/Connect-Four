@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.connectfourgame.ui.theme.ConnectFourGameTheme
 import kotlinx.coroutines.delay
-import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +31,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+enum class GameMode {
+    TWO_PLAYERS,
+    VS_AI
+}
+
 @Composable
 fun ConnectFourGame() {
     val rows = 6
@@ -40,30 +44,55 @@ fun ConnectFourGame() {
     var board by remember { mutableStateOf(Array(rows) { IntArray(cols) { 0 } }) }
     var playerTurn by remember { mutableStateOf(true) }
     var winner by remember { mutableStateOf(0) }
+    var gameMode by remember { mutableStateOf<GameMode?>(null) }
+
+    if (gameMode == null) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Button(onClick = { gameMode = GameMode.TWO_PLAYERS }) {
+                Text("Jugar 2 Jugadores")
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = { gameMode = GameMode.VS_AI }) {
+                Text("Jugar contra IA")
+            }
+        }
+        return
+    }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
             text = when {
-                winner == 1 -> "¡Ganaste!"
-                winner == 2 -> "¡La máquina ganó!"
+                winner == 1 -> "¡Ganaste!" // Jugador 1
+                winner == 2 -> if (gameMode == GameMode.VS_AI) "¡La máquina ganó!" else "¡Jugador 2 ganó!"
                 winner == 3 -> "¡Empate!"
-                else -> if (playerTurn) "Tu turno" else "Turno de la máquina..."
+                else -> {
+                    if (gameMode == GameMode.VS_AI) {
+                        if (playerTurn) "Tu turno" else "Turno de la máquina..."
+                    } else {
+                        if (playerTurn) "Turno de Jugador 1" else "Turno de Jugador 2"
+                    }
+                }
             },
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(16.dp)
         )
 
         Board(board, onColumnClick = { col ->
-            if (playerTurn && winner == 0) {
+            if (winner == 0 && (gameMode == GameMode.TWO_PLAYERS || playerTurn)) {
                 val row = findAvailableRow(board, col)
                 if (row != -1) {
-                    board = board.copyWithMove(row, col, 1)
-                    if (checkWinner(board, 1)) {
-                        winner = 1
+                    val currentPlayer = if (playerTurn) 1 else 2
+                    board = board.copyWithMove(row, col, currentPlayer)
+                    if (checkWinner(board, currentPlayer)) {
+                        winner = currentPlayer
                     } else if (isBoardFull(board)) {
                         winner = 3
                     } else {
-                        playerTurn = false
+                        playerTurn = !playerTurn
                     }
                 }
             }
@@ -75,12 +104,13 @@ fun ConnectFourGame() {
             board = Array(rows) { IntArray(cols) { 0 } }
             winner = 0
             playerTurn = true
+            gameMode = null // volver al menú
         }) {
             Text("Reiniciar")
         }
 
-        if (!playerTurn && winner == 0) {
-            LaunchedEffect(Unit) {
+        if (gameMode == GameMode.VS_AI && !playerTurn && winner == 0) {
+            LaunchedEffect(board) {
                 delay(500)
                 val validCols = (0 until cols).filter { findAvailableRow(board, it) != -1 }
                 val col = validCols.random()
