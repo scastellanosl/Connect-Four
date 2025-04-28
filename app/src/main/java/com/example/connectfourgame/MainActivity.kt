@@ -8,6 +8,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,7 +25,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ConnectFourGameTheme {
+            val darkTheme = true;
+            ConnectFourGameTheme (darkTheme=darkTheme){
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ConnectFourGame()
                 }
@@ -104,9 +108,22 @@ fun ConnectFourGame() {
             board = Array(rows) { IntArray(cols) { 0 } }
             winner = 0
             playerTurn = true
+
+            //gameMode = null // volver al menú
+        }) {
+            Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = "Reiniciar"
+
+            )
+        }
+        Button(onClick = {
             gameMode = null // volver al menú
         }) {
-            Text("Reiniciar")
+            Icon(
+                imageVector = Icons.Filled.ArrowForward,
+                contentDescription = "Menu"
+            )
         }
 
         if (gameMode == GameMode.VS_AI && !playerTurn && winner == 0) {
@@ -147,7 +164,7 @@ fun Board(board: Array<IntArray>, onColumnClick: (Int) -> Unit) {
 fun Cell(value: Int, onClick: () -> Unit) {
     val color = when (value) {
         1 -> Color.Red
-        2 -> Color.Yellow
+        2 -> Color.Blue
         else -> Color.LightGray
     }
 
