@@ -20,13 +20,15 @@ import androidx.compose.ui.unit.dp
 import com.example.connectfourgame.ui.theme.ConnectFourGameTheme
 import kotlinx.coroutines.delay
 
+/**
+ * Main activity hosting the Connect Four game using Jetpack Compose.
+ */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val darkTheme = true;
-            ConnectFourGameTheme (darkTheme=darkTheme){
+            ConnectFourGameTheme(darkTheme = true) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ConnectFourGame()
                 }
@@ -35,11 +37,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Represents the game mode selected by the user.
+ */
 enum class GameMode {
-    TWO_PLAYERS,
-    VS_AI
+    TWO_PLAYERS, VS_AI
 }
 
+/**
+ * Root composable that contains game state and UI.
+ */
 @Composable
 fun ConnectFourGame() {
     val rows = 6
@@ -50,6 +57,7 @@ fun ConnectFourGame() {
     var winner by remember { mutableStateOf(0) }
     var gameMode by remember { mutableStateOf<GameMode?>(null) }
 
+    // Game mode selection screen
     if (gameMode == null) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -57,75 +65,68 @@ fun ConnectFourGame() {
             modifier = Modifier.fillMaxSize()
         ) {
             Button(onClick = { gameMode = GameMode.TWO_PLAYERS }) {
-                Text("Jugar 2 Jugadores")
+                Text("Play 2 Players")
             }
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = { gameMode = GameMode.VS_AI }) {
-                Text("Jugar contra IA")
+                Text("Play vs AI")
             }
         }
         return
     }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    // Main game layout
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize().padding(16.dp)
+    ) {
+        // Game status message
         Text(
             text = when {
-                winner == 1 -> "¡Ganaste!" // Jugador 1
-                winner == 2 -> if (gameMode == GameMode.VS_AI) "¡La máquina ganó!" else "¡Jugador 2 ganó!"
-                winner == 3 -> "¡Empate!"
-                else -> {
-                    if (gameMode == GameMode.VS_AI) {
-                        if (playerTurn) "Tu turno" else "Turno de la máquina..."
-                    } else {
-                        if (playerTurn) "Turno de Jugador 1" else "Turno de Jugador 2"
-                    }
-                }
+                winner == 1 -> "You win!"
+                winner == 2 -> if (gameMode == GameMode.VS_AI) "AI wins!" else "Player 2 wins!"
+                winner == 3 -> "Draw!"
+                else -> if (gameMode == GameMode.VS_AI)
+                    if (playerTurn) "Your turn" else "AI's turn..."
+                else if (playerTurn) "Player 1's turn" else "Player 2's turn"
             },
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(16.dp)
         )
 
-        Board(board, onColumnClick = { col ->
+        // Game board UI
+        Board(board) { col ->
             if (winner == 0 && (gameMode == GameMode.TWO_PLAYERS || playerTurn)) {
                 val row = findAvailableRow(board, col)
                 if (row != -1) {
                     val currentPlayer = if (playerTurn) 1 else 2
                     board = board.copyWithMove(row, col, currentPlayer)
-                    if (checkWinner(board, currentPlayer)) {
-                        winner = currentPlayer
-                    } else if (isBoardFull(board)) {
-                        winner = 3
-                    } else {
-                        playerTurn = !playerTurn
+                    when {
+                        checkWinner(board, currentPlayer) -> winner = currentPlayer
+                        isBoardFull(board) -> winner = 3
+                        else -> playerTurn = !playerTurn
                     }
                 }
             }
-        })
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Restart game
         Button(onClick = {
             board = Array(rows) { IntArray(cols) { 0 } }
             winner = 0
             playerTurn = true
-
-            //gameMode = null // volver al menú
         }) {
-            Icon(
-                imageVector = Icons.Filled.Refresh,
-                contentDescription = "Reiniciar"
-
-            )
-        }
-        Button(onClick = {
-            gameMode = null // volver al menú
-        }) {
-            Icon(
-                imageVector = Icons.Filled.ArrowForward,
-                contentDescription = "Menu"
-            )
+            Icon(Icons.Filled.Refresh, contentDescription = "Reset")
         }
 
+        // Return to main menu
+        Button(onClick = { gameMode = null }) {
+            Icon(Icons.Filled.ArrowForward, contentDescription = "Menu")
+        }
+
+        // Handle AI turn with delay
         if (gameMode == GameMode.VS_AI && !playerTurn && winner == 0) {
             LaunchedEffect(board) {
                 delay(500)
@@ -134,12 +135,10 @@ fun ConnectFourGame() {
                 val row = findAvailableRow(board, col)
                 if (row != -1) {
                     board = board.copyWithMove(row, col, 2)
-                    if (checkWinner(board, 2)) {
-                        winner = 2
-                    } else if (isBoardFull(board)) {
-                        winner = 3
-                    } else {
-                        playerTurn = true
+                    when {
+                        checkWinner(board, 2) -> winner = 2
+                        isBoardFull(board) -> winner = 3
+                        else -> playerTurn = true
                     }
                 }
             }
@@ -147,19 +146,25 @@ fun ConnectFourGame() {
     }
 }
 
+/**
+ * Renders the full board grid with clickable columns.
+ */
 @Composable
 fun Board(board: Array<IntArray>, onColumnClick: (Int) -> Unit) {
     Column {
-        for (row in board.indices) {
+        for (row in board) {
             Row {
-                for (col in board[row].indices) {
-                    Cell(board[row][col], onClick = { onColumnClick(col) })
+                for ((colIndex, cell) in row.withIndex()) {
+                    Cell(cell) { onColumnClick(colIndex) }
                 }
             }
         }
     }
 }
 
+/**
+ * A single cell of the game board.
+ */
 @Composable
 fun Cell(value: Int, onClick: () -> Unit) {
     val color = when (value) {
@@ -177,14 +182,19 @@ fun Cell(value: Int, onClick: () -> Unit) {
     )
 }
 
-// Helper functions
+/**
+ * Finds the next available row in a column from bottom to top.
+ */
 fun findAvailableRow(board: Array<IntArray>, col: Int): Int {
-    for (r in board.size - 1 downTo 0) {
+    for (r in board.indices.reversed()) {
         if (board[r][col] == 0) return r
     }
     return -1
 }
 
+/**
+ * Checks for four connected pieces horizontally, vertically, or diagonally.
+ */
 fun checkWinner(board: Array<IntArray>, player: Int): Boolean {
     val rows = board.size
     val cols = board[0].size
@@ -200,10 +210,20 @@ fun checkWinner(board: Array<IntArray>, player: Int): Boolean {
     return false
 }
 
+/**
+ * Returns true if the board has no empty cells.
+ */
 fun isBoardFull(board: Array<IntArray>): Boolean {
     return board.all { row -> row.all { it != 0 } }
 }
 
+/**
+ * Creates a copy of the board with a move applied at [row], [col] by [player].
+ */
 fun Array<IntArray>.copyWithMove(row: Int, col: Int, player: Int): Array<IntArray> {
-    return Array(this.size) { r -> IntArray(this[0].size) { c -> if (r == row && c == col) player else this[r][c] } }
+    return Array(size) { r ->
+        IntArray(this[0].size) { c ->
+            if (r == row && c == col) player else this[r][c]
+        }
+    }
 }
